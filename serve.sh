@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Qwen3.8-27B MLX server with image support, OpenAI + Anthropic API formats (http://localhost:8080/v1)
 # OpenAI: /v1/chat/completions (Authorization: Bearer KEY) · Anthropic: /v1/messages (x-api-key: KEY)
-# Listens on HOST (default 0.0.0.0) but only answers loopback / LAN clients.
+# Listens on BIND_HOST (default 0.0.0.0) but only answers loopback / LAN clients.
 # Set API_KEY to require "Authorization: Bearer $API_KEY" on requests.
 # MTP speculative decoding is on by default (~1.9x faster); DRAFT= disables it.
 cd "${0:A:h}"
@@ -15,4 +15,4 @@ DRAFT="${DRAFT-mlx-community/Qwen3.8-27B-MTP-4bit}"
 draft_args=()
 [[ -n "$DRAFT" ]] && draft_args=(--draft-model "$DRAFT")
 exec .venv/bin/python api_server.py --model "$MODEL" "${draft_args[@]}" \
-  --host "${HOST:-0.0.0.0}" --port "${PORT:-8080}" "$@"
+  --host "${BIND_HOST:-0.0.0.0}" --port "${PORT:-8080}" "$@"
