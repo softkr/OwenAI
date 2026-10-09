@@ -17,12 +17,21 @@ Apple Silicon Mac에서 Qwen3.8-27B(MLX 4bit)를 로컬로 돌리는 서버와 �
 
 처음 실행하면 모델을 `hf-cache/`에 내려받습니다. 이후에는 로딩만 합니다.
 
+### 다른 기기에서 접속 (사설 IP)
+
+두 서버는 `0.0.0.0`에서 열리므로, 같은 네트워크(공유기)에 있는 폰이나 다른 PC에서 `http://<이 Mac의 사설 IP>:8081`로 접속할 수 있습니다. `./run.sh`는 준비가 끝나면 이 주소를 같이 출력합니다.
+
+- localhost와 사설 IP 대역(`192.168.x.x`, `10.x.x.x`, `172.16–31.x.x`)에서 온 요청만 받고, 공인 IP에서 온 요청은 거부합니다(API는 403).
+- 이 Mac에서만 쓰려면 `HOST=127.0.0.1 ./run.sh`로 실행하세요.
+- macOS 방화벽이 켜져 있으면 처음 실행할 때 Python의 수신 연결을 허용할지 물어봅니다. 허용해야 다른 기기에서 접속됩니다.
+
 ### 환경 변수
 
 | 변수 | 기본값 | 설명 |
 |---|---|---|
 | `MODEL` | `mlx-community/Qwen3.8-27B-4bit` | 사용할 모델 |
 | `DRAFT` | `mlx-community/Qwen3.8-27B-MTP-4bit` | MTP 추측 디코딩용 드래프트 모델 (약 1.9배 빠름). `DRAFT=`로 끄기 |
+| `HOST` | `0.0.0.0` | 두 서버가 바인딩할 주소. `127.0.0.1`이면 이 Mac에서만 접속 |
 | `PORT` | `8080` | 모델 서버 포트 |
 | `WEB_PORT` | `8081` | 웹 페이지 포트 |
 | `API_KEY` | (없음) | 서버 모드에서 요구할 API 키. 웹 모드는 실행할 때마다 새 키를 자동 생성 |
@@ -31,7 +40,7 @@ Apple Silicon Mac에서 Qwen3.8-27B(MLX 4bit)를 로컬로 돌리는 서버와 �
 
 ## API
 
-서버는 `127.0.0.1`에서만 열립니다. 외부 클라이언트에서 쓸 때는 키를 직접 정해서 띄우세요.
+서버는 localhost와 사설 IP에서 온 요청만 받습니다. 같은 네트워크의 다른 기기에서는 `127.0.0.1` 대신 이 Mac의 사설 IP를 쓰면 됩니다. 외부 클라이언트에서 쓸 때는 키를 직접 정해서 띄우세요(키 없이 띄우면 같은 네트워크의 누구나 쓸 수 있습니다).
 
 ```sh
 API_KEY=mykey ./run.sh server
@@ -104,8 +113,8 @@ curl http://127.0.0.1:8080/v1/messages \
 | `serve.sh` | 모델 서버만 실행 |
 | `web.sh` | 이전 방식의 통합 실행 스크립트 (`serve.sh` + 웹 서버) |
 | `chat.sh` | 터미널 대화 |
-| `api_server.py` | `mlx_vlm.server` 래퍼. Anthropic SDK의 `x-api-key` 헤더를 Bearer 인증으로 바꿔 넘김 |
-| `web/server.py` | 정적 파일 서버 + `/api/search`, `/api/fetch` (웹 도구, 로컬/내부망 주소 차단) |
+| `api_server.py` | `mlx_vlm.server` 래퍼. Anthropic SDK의 `x-api-key` 헤더를 Bearer 인증으로 바꿔 넘기고, 사설망 밖의 요청을 거부 |
+| `web/server.py` | 정적 파일 서버 + `/api/search`, `/api/fetch` (웹 도구). 사설망 클라이언트만 받음. 웹 도구는 로컬/내부망 주소를 읽지 못하게 막음 |
 | `web/index.html` | 채팅 페이지 (`index.classic.html`은 이전 버전) |
 | `hf-cache/` | Hugging Face 모델 캐시 (`HF_HOME`) |
 | `.venv/` | Python 가상환경 (mlx, mlx_vlm, mlx_lm, trafilatura, ddgs 등) |

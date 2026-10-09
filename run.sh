@@ -5,7 +5,10 @@
 #   ./run.sh server       model server only (OpenAI + Anthropic API, http://localhost:8080/v1)
 #   ./run.sh [server] -- <args>   extra args are passed to mlx_vlm.server (via api_server.py)
 #
-# Env: MODEL, DRAFT (empty disables MTP speculative decoding), PORT, WEB_PORT,
+# Both servers listen on HOST (default 0.0.0.0) and only answer loopback / LAN clients,
+# so the page opens from other devices at http://<this Mac's private IP>:WEB_PORT.
+#
+# Env: MODEL, DRAFT (empty disables MTP speculative decoding), HOST, PORT, WEB_PORT,
 #      API_KEY (server mode only; web mode generates a fresh one), APC_ENABLED, APC_DISK_ENABLED
 cd "${0:A:h}"
 
@@ -19,12 +22,13 @@ export HF_HOME="$PWD/hf-cache"
 export APC_ENABLED="${APC_ENABLED:-1}" APC_DISK_ENABLED="${APC_DISK_ENABLED:-0}"
 MODEL="${MODEL:-mlx-community/Qwen3.8-27B-4bit}"
 DRAFT="${DRAFT-mlx-community/Qwen3.8-27B-MTP-4bit}"
+HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8080}"
 WEB_PORT="${WEB_PORT:-8081}"
 
 server_cmd=(.venv/bin/python api_server.py --model "$MODEL")
 [[ -n "$DRAFT" ]] && server_cmd+=(--draft-model "$DRAFT")
-server_cmd+=(--host 127.0.0.1 --port "$PORT" "$@")
+server_cmd+=(--host "$HOST" --port "$PORT" "$@")
 
 if [[ $MODE == server ]]; then
   [[ -n "$API_KEY" ]] && export MLX_VLM_SERVER_API_KEY="$API_KEY"
@@ -39,7 +43,7 @@ echo "window.API_KEY = \"$API_KEY\";" > web/config.js
 
 "${server_cmd[@]}" &
 SERVER_PID=$!
-.venv/bin/python web/server.py "$WEB_PORT" &
+.venv/bin/python web/server.py "$WEB_PORT" "$HOST" &
 WEB_PID=$!
 trap 'kill $SERVER_PID $WEB_PID 2>/dev/null; rm -f web/config.js' EXIT
 trap 'exit 130' INT TERM
@@ -51,6 +55,8 @@ until curl -sf -H "Authorization: Bearer $API_KEY" "http://127.0.0.1:$PORT/v1/mo
   sleep 1
 done
 echo "준비 완료 → http://127.0.0.1:$WEB_PORT  (종료: Ctrl+C)"
+LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null)"
+[[ "$HOST" != 127.0.0.1 && -n "$LAN_IP" ]] && echo "같은 네트워크의 다른 기기 → http://$LAN_IP:$WEB_PORT"
 open "http://127.0.0.1:$WEB_PORT"
 
 # Stop everything if either process dies.
