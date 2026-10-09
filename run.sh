@@ -9,7 +9,6 @@
 # so the page opens from other devices at http://<this Mac's private IP>:WEB_PORT.
 #
 # Env: MODEL, DRAFT (empty disables MTP speculative decoding), BIND_HOST, PORT, WEB_PORT,
-#      OPEN_BROWSER (0 = don't open the page), WATCH_PID (stop when that process exits),
 #      API_KEY (server mode only; web mode generates a fresh one), APC_ENABLED, APC_DISK_ENABLED
 cd "${0:A:h}"
 
@@ -55,7 +54,7 @@ SERVER_PID=$!
 .venv/bin/python web/server.py "$WEB_PORT" "$BIND_HOST" &
 WEB_PID=$!
 trap 'kill $SERVER_PID $WEB_PID 2>/dev/null; rm -f web/config.js' EXIT
-# PIPE: once the launching app is gone, any echo would otherwise kill the script before cleanup
+# HUP/PIPE: when the terminal goes away, cleanup still runs instead of the script just dying
 trap 'exit 130' INT TERM HUP PIPE
 
 echo "모델 로딩 중…"
@@ -67,11 +66,10 @@ done
 echo "준비 완료 → http://127.0.0.1:$WEB_PORT  (종료: Ctrl+C)"
 LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null)"
 [[ "$BIND_HOST" != 127.0.0.1 && -n "$LAN_IP" ]] && echo "같은 네트워크의 다른 기기 → http://$LAN_IP:$WEB_PORT"
-[[ "${OPEN_BROWSER:-1}" != 0 ]] && open "http://127.0.0.1:$WEB_PORT"
+open "http://127.0.0.1:$WEB_PORT"
 
-# Stop everything if either process dies (or the launching app, when WATCH_PID is set).
+# Stop everything if either process dies.
 while kill -0 $SERVER_PID 2>/dev/null && kill -0 $WEB_PID 2>/dev/null; do
-  [[ -n "$WATCH_PID" ]] && ! kill -0 $WATCH_PID 2>/dev/null && break
   sleep 2
 done
 echo "서버 종료됨"
