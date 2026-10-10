@@ -2,5 +2,3 @@
 hf-cache/
 __pycache__/
 .DS_Store
-# per-launch API key written by run.sh / web.sh
-web/config.js
